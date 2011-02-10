@@ -1,11 +1,15 @@
 # Copyright (C) 2001-2010, Parrot Foundation.
 
-=head1 PDD 32: M0 Design Spec
+=head1 PDD 32: M0 Design Spec (atrodo's prototype)
 
 =head2 Abstract
 
 This document specifies M0, the set of microcode-like ops on which Parrot will
 be based, and their requisite runtime environment.
+
+This specific version of the spec defines how atrodo's current prototype
+(https://github.com/atrodo/lorito) operates, not necessarily how the spec
+going forward will be.
 
 =head2 Definitions
 
@@ -30,7 +34,7 @@ they're used as a foundation for Parrot.
 
 =item * Lorito Context
 
-This refers to a Lorito Context PMC, which is the most important datastructure
+This refers to a Lorito Context PMC, which is the most important data structure
 at the M0 level. You could say that it is the "secret sauce" of M0. The exact
 details of the Lorito Context PMC are still in flux.
 
@@ -47,7 +51,7 @@ having having a mix of C and PIR.
 We are also designing M0 to be minimally simple.  As much as possible, all the
 complexity of Parrot will be built on top of M0.  This is to facilitate
 multiple implementations, e.g. a quick and dirty prototype implementation in
-JavaScript, a space-optimized implemention targeted for mobile devices, a
+JavaScript, a space-optimized implementation targeted for mobile devices, a
 tracing jit targeted for server use, etc.
 
 There will be no stacks in M0, not even for argument passing. Everything must
@@ -67,20 +71,174 @@ M0 ops are very low-level and provide the smallest necessary amount of
 The names and number of the ops below may change at any time, until the
 spec is more stable.
 
-=item * noop - Do Nothing
+=over
 
-=item * get_cc - Get the current Lorito context
+=item * noop
 
-=item * invoke_cc - Invoke the current Lorito context
+=item * end
 
-=item * new_ctx - Create a new Lorito context
+=item * add
 
+=item * sub
+
+=item * mul
+
+=item * div
+
+=item * mod
+
+=item * and
+
+=item * or
+
+=item * xor
+
+=item * not
+
+=item * shl
+
+=item * shr
+
+=item * iseq
+
+=item * isgt
+
+=item * isge
+
+=item * goto
+
+=item * if
+
+=item * set
+
+=item * load_const
+
+=item * load_imm
+
+=item * coerce_int
+
+=item * coerce_num
+
+=item * coerce_str
+
+=item * new
+
+=item * store
+
+=item * load
+
+=item * push_arg
+
+=item * pop_arg
+
+=item * call
+
+=item * loadlib
+
+=item * read
+
+=item * write
+
+=item * say
+
+=item * gripe
+
+=item * lookup
+
+=item * ctx
+
+=item * block
+
+=item * new_ctx
+
+=item * push_ret
+
+=item * pop_ret
+
+=item * cnt_ret
+
+=item * cnt_arg
+
+=item * hcf
+
+=back
 
 =head2 Textual Representation
 
-Describe what the textual form of M0 will look like.  The emphasis should be on
-ease of consumption.  We won't be writing a large amount of M0 code by hand;
-it's just fine if it's painful to do so for non-trivial use cases.
+  <goal> -> ( <any_code_blk> | <const_blk> | <struct_blk> )*
+  <any_code_blk> -> ( <code_blk> | <init_blk> | <main_blk> ) <str> <stmt>* .end;
+  <code_blk> -> .sub
+  <init_blk> -> .init
+  <main_blk> -> .main
+  <const_blk> -> .const <str> <const_stmt>* .end;
+  <struct_blk> -> ( .struct | .data ) <str> <struct_stmt>* .end;
+  <stmt> -> <label>? <dest>? <regtype>? <opcode> ( <lhs> ( ,?  | , <rhs> ) )? ( : ( <imm> | <offset> | <jmp> ) )? ;
+  <const_stmt> -> <label>? <const> ;
+  <struct_stmt> -> <label>? size <int> ;
+  <label> -> <id>? :
+  <dest>  -> <reg> =
+  <regtype> -> ( INT | NUM | STR | PMC )
+  <opcode> -> [ @OPS ]
+  <lhs> -> <reg>
+  <rhs> -> <reg>
+  <imm> -> <int>
+  <jmp> -> <id>
+  <offset> -> ( <str> | <id> )? [ <id> ( [+-] <int> )? ]
+  <const> -> ( <num> | <int> | <str> )
+
+  <str> ~> m/(?:') ([^']*(?:(?:\')[^']*)*) (?:')/xms
+  <str> ~> m/(?:") ([^"]*(?:(?:\")[^"]*)*) (?:")/xms
+  <int> ~> m/(\d+)/xms
+  <num> ~> m/( [+-]? \d+ (?: [.] \d+)? (?: [+-]? [e] \d+)? )/xms
+  <id>  ~> m/( [[:alpha:]] \w* )/xms
+  <reg> ~> m/[$] [I | N | S | P]? ([\d]+)/xms
+
+Above is a a grammar like description of the C<lasm> textual format.  In it's
+basic form, it has 2 basic parts.
+
+=over
+
+=item * Blocks
+
+Each C<lasm> file is a series of blocks.  Each block is either code, data
+constant or structure.  Each block can be named.  Code blocks contains a series
+of opcodes.  Data blocks are available to store data at runtime.  Constant
+blocks store data at compile time.  The key difference between data and
+constant blocks is the storage requirements.  Data blocks reserve space but
+are not stored in an output file while constant blocks are written on output
+and are immutable at runtime.  Structure blocks are syntactic sugar that allows
+writers of C<lasm> files to reference offset locations by name instead of by
+a number.
+
+=item * Op statements
+
+Each op statement has a single, basic structure.  It has:
+
+=over
+
+=item * Label
+
+=item * Destination Register
+
+=item * Op Type
+
+=item * The Opcode
+
+=item * Source #1 register
+
+=item * Source #2 register
+
+=item * An Immediate value, offset or jump location
+
+=back
+
+The only required portion of the statement is the opcode.  If Source #2 is
+used, then Source #1 must also appear.
+
+If the Op Type is omitted, PMC is used.  If a register is not give, register
+0 is used.
+
+=back
 
 =head2 Binary Representation
 
@@ -90,7 +248,25 @@ representation to remain stable once it's been finalized.
 
 =head2 Binary instruction format
 
-describe the binary encoding of a single M0 instruction and how it should be interpreteted.
+The binary instruction format is exactly 8 bytes long and has 6 parts.
+
+=over
+
+=item * Opcode type (2 bits)
+
+=item * Opcode (6 bits)
+
+=item * Destination Register (1 byte)
+
+=item * Source #1 Register (1 byte)
+
+=item * Source #2 Register (1 byte)
+
+=item * Constant (4 bytes)
+
+=back
+
+That does mean that an opcode can only refer to 255 registers at a time.
 
 =head2 metadata
 
@@ -110,14 +286,45 @@ describe structs here, as far as they're relevant to m0
 
 =head2 Types
 
-Describe the types here (INPS, S being an alias for P)
+There are 4 basic types in C<M0>: INSP
+
+=item * Integer
+
+=item * Number (Floating point number)
+
+=item * PMC
+
+=item * Symbol
+
+=back
+
+The PMC type is where most code will focus on.  A PMC is actually conceptually
+identical to a chunk of memory with a little extra magic available.  It has
+a data chunk of a particular size, a lookup method and a vtable PMC.
+
+The data chunk is addressable and is available for any kind of manipulation
+by C<M0> code.  Any basic type can be stored to or loaded from the data chunk,
+including other PMCs.  There is a little bit of behind the scenes work to
+encode and decode a PMC address into a data chunk so as to prevent malicious
+access to the underlying implementation.  The value stored for a PMC into a
+data chunk should be considered opaque.
+
+The lookup method and vtable PMC are two special pieces of data stored
+with the PMC.  When the lookup opcode is invoked, the lookup method is invoked
+with the PMC and vtable.
+
+In these ways, PMCs and Objects are identical and be treated as equal citizens.
+
+A symbol is not a string.  It is an immutable, single instance data type.
+Setting a register to 'foobar' will always point to a single instance of
+the string 'foobar'.  This is bad performance for string manipulation, but
+very good performance for string compares.
 
 =head2 MOP interaction
 
-describe this here - the mop is mostly a higher-level concern than M0 cares
-about, but M0 will need to describe how PMCs and strings behave.  To make that
-happen, M0 needs to have some minimal concept of a pmc (and an object, since
-they'll be the same thing under Lorito).
+C<M0> will come with a default MOP installed on all new PMC/Objects.  But,
+because of the flexibility that the lookup opcode affords, the lookup method
+can be changed to anything that conforms to the lookup method specification.
 
 =head2 FFI
 
