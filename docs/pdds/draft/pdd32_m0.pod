@@ -328,7 +328,11 @@ leak between code blocks.
 
 =head2 structs
 
-describe structs here, as far as they're relevant to m0
+Since all PMCs are just chunks of memory available for manipulation, structs
+are trivial to implement.  Structs can be accessed and manipulated just like C
+would on a traditional machine.  Therefore, structs are an implied construct,
+and not enforced.
+
 
 =head2 Types
 
