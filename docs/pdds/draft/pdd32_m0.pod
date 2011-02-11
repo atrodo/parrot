@@ -278,7 +278,53 @@ if m0 needs to support op composition, describe it here
 
 =head2 memory model
 
-describe what kind of memory m0 ops will have access to and how they'll get at it
+C<M0> only has access to memory associated with a PMC, everything except the
+interp object is contained within a PMC.  There are several internal PMCs that
+make up the basic memory "layout" of C<M0>.
+
+=over
+
+=item * CONTEXT
+
+=item * FILE_BLOCK
+
+=item * CODE_BLOCK
+
+=item * CONST_BLOCK
+
+=item * DATA_BLOCK
+
+=item * C_METHOD
+
+=back
+
+The "root" of the C<M0> memory layout is the interp object.  It probably can be
+thought of more accurarately as a "runcore" object.  It contains the currently
+running context (as well as all PMCs that it created (not implemented yet)).
+
+The file blocks are all the logical bytecode files loaded from the loadlib op.
+Each file block has an array of code, constant and data blocks.  Code blocks
+contain executable code.  Data blocks hold data available to manipulation to
+the code blocks. Constant blocks hold the constants that can be loaded by the
+load_const op.
+
+The context objects are the actual executation units of C<M0>.  It contains
+a program counter, code block, and constant block, the registers and an array
+of arguments for passing into and out of the context.  It also contains an
+optional context to return to implictly if it reaches the end of available ops
+in the code block.
+
+The C_Method is a special internal PMC that represents an external function
+that is callable from within C<M0>
+
+Directly from the interp object you can access the current context and all of
+files blocks loaded.  From the file block, you can access all of the code,
+constant and data blocks that were loaded with the file.
+
+This layout also has the implicataion that the code execution is quite
+encapsulated.  For instance since registers are tied to a context, and a
+context is only associated with a single code block at a time, registers do not
+leak between code blocks.
 
 =head2 structs
 
@@ -287,6 +333,8 @@ describe structs here, as far as they're relevant to m0
 =head2 Types
 
 There are 4 basic types in C<M0>: INSP
+
+=over
 
 =item * Integer
 
