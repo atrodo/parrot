@@ -299,7 +299,7 @@ make up the basic memory "layout" of C<M0>.
 =back
 
 The "root" of the C<M0> memory layout is the interp object.  It probably can be
-thought of more accurarately as a "runcore" object.  It contains the currently
+thought of more accurately as a "runcore" object.  It contains the currently
 running context (as well as all PMCs that it created (not implemented yet)).
 
 The file blocks are all the logical bytecode files loaded from the loadlib op.
@@ -308,10 +308,10 @@ contain executable code.  Data blocks hold data available to manipulation to
 the code blocks. Constant blocks hold the constants that can be loaded by the
 load_const op.
 
-The context objects are the actual executation units of C<M0>.  It contains
+The context objects are the actual execution units of C<M0>.  It contains
 a program counter, code block, and constant block, the registers and an array
 of arguments for passing into and out of the context.  It also contains an
-optional context to return to implictly if it reaches the end of available ops
+optional context to return to implicitly if it reaches the end of available ops
 in the code block.
 
 The C_Method is a special internal PMC that represents an external function
@@ -321,7 +321,7 @@ Directly from the interp object you can access the current context and all of
 files blocks loaded.  From the file block, you can access all of the code,
 constant and data blocks that were loaded with the file.
 
-This layout also has the implicataion that the code execution is quite
+This layout also has the implication that the code execution is quite
 encapsulated.  For instance since registers are tied to a context, and a
 context is only associated with a single code block at a time, registers do not
 leak between code blocks.
